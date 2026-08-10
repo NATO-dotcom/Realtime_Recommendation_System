@@ -13,12 +13,14 @@ services:
   mlflow:
     image: python:3.10-slim
     ports:
-      - "5000"  # Docker will dynamically assign a random free port for MLflow too!
+      - "5001:5000"  
     command: >
       bash -c "pip install mlflow psycopg2-binary &&
       mlflow server
       --backend-store-uri postgresql://mlflow_user:mlflow_password@db:5432/mlflow_db
-      --default-artifact-root /mlflow_artifacts
+      --default-artifact-root mlflow-artifacts:/
+      --artifacts-destination /mlflow_artifacts
+      --serve-artifacts
       --host 0.0.0.0"
     volumes:
       - ./local_artifacts:/mlflow_artifacts
@@ -28,9 +30,19 @@ services:
   grafana:
     image: grafana/grafana:latest
     ports:
-      - "3000"  # Docker dynamically assigns a random free port
+      - "3001:3000"  
     depends_on:
       - db
+
+  localstack:
+    image: localstack/localstack:3.7.2
+    ports:
+      - "4566:4566"
+    environment:
+      - DEFAULT_REGION=us-east-1
+      - DOCKER_HOST=unix:///var/run/docker.sock
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
 
 volumes:
   postgres_data:

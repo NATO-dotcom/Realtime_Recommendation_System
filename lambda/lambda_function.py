@@ -10,8 +10,8 @@ internal_endpoint = f"http://{localstack_host}:4566"
 
 # Initialize Kinesis with the dynamic endpoint
 kinesis_client = boto3.client('kinesis', 
-                              endpoint_url=internal_endpoint, 
-                              region_name='us-east-1')
+                                endpoint_url=internal_endpoint, 
+                                region_name='us-east-1')
 
 OUTPUT_STREAM = 'recsys-output-recommendations'
 

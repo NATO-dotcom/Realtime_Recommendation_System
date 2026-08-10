@@ -5,24 +5,15 @@ from surprise import Dataset, SVD, accuracy, Reader
 from surprise.model_selection import train_test_split
 
 # 1. Connect to your running Docker MLflow server
-mlflow.set_tracking_uri("http://localhost:5000")
 
-# 2. Tell MLflow exactly where to save local artifacts for this experiment
-# Ensure the path is relative to the root of your project
-import os
-artifact_location = f"file://{os.path.abspath('infrastructure/local_artifacts')}"
+mlflow.set_tracking_uri("http://localhost:5001")
 
-# 3. Create or set the experiment with the specific artifact location
-experiment_name = "recsys-svd-experiment"
-try:
-    mlflow.create_experiment(experiment_name, artifact_location=artifact_location)
-except mlflow.exceptions.RestException:
-    pass # Experiment already exists
+# 2. Set the experiment (Docker handles the artifact locations automatically now!)
 
+experiment_name = "recsys-svd-experiment-v3"
 mlflow.set_experiment(experiment_name)
 
 def train_model():
-
     print("Loading dataset from data/ratings.csv...")
     df = pd.read_csv("data/ratings.csv")
     
@@ -53,12 +44,14 @@ def train_model():
 
         mlflow.log_metric("rmse", rmse)
 
+        # Save the file locally first
         model_path = "svd_model.pkl"
         with open(model_path, "wb") as f:
             pickle.dump(algo, f)
         
-        # mlflow.log_artifact(model_path, artifact_path="models")
+        # Tell MLflow to push it to your artifacts folder!
+        mlflow.log_artifact(model_path, artifact_path="models")
         print(f"Run completed! Validation RMSE logged: {rmse:.4f}")
-        
+                
 if __name__ == "__main__":
     train_model()
