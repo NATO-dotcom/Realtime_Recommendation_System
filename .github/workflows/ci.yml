@@ -22,6 +22,7 @@ jobs:
         uses: localstack/setup-localstack@v0.2.2
         with:
           image-tag: '3.7.2'
+          use-pro: 'false'
         env:
           LOCALSTACK_ACKNOWLEDGE_ACCOUNT_REQUIREMENT: "1"
 
