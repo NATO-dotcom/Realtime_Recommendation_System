@@ -20,7 +20,7 @@ jobs:
 
       - name: Start LocalStack via Docker
         run: |
-          docker run -d -e DEFAULT_REGION=us-east-1 -p 4566:4566 localstack/localstack:3.7.2
+          docker run -d -e DEFAULT_REGION=us-east-1 -p 4566:4566 -v /var/run/docker.sock:/var/run/docker.sock localstack/localstack:3.7.2
           sleep 15
 
       - name: Setup Terraform
