@@ -1,186 +1,344 @@
-# 🚀 End-to-End MLOps Recommendation System
+<div align="center">
 
-![Python](https://img.shields.io/badge/Python-3.10-blue)
-![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-green)
-![Docker](https://img.shields.io/badge/Docker-Ready-blue)
-![MLflow](https://img.shields.io/badge/MLflow-Tracking-blueviolet)
-![Terraform](https://img.shields.io/badge/Terraform-IaC-purple)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Database-blue)
+# Realtime Recommendation System — MLOps Pipeline
 
-A complete, end-to-end Machine Learning Operations (MLOps) project that builds, tracks, deploys, and monitors a Recommendation System using Collaborative Filtering (SVD). This project showcases best practices in ML lifecycle management, from model training and tracking to scalable deployment and continuous data drift monitoring.
+**An end-to-end MLOps project demonstrating the complete ML lifecycle: from data ingestion and experiment tracking to real-time streaming, serverless inference, and production monitoring.**
 
----
+[![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.100%2B-009688?style=flat-square&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![MLflow](https://img.shields.io/badge/MLflow-Tracking-0194E2?style=flat-square&logo=mlflow&logoColor=white)](https://mlflow.org/)
+[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=flat-square&logo=docker&logoColor=white)](https://www.docker.com/)
+[![Terraform](https://img.shields.io/badge/Terraform-IaC-7B42BC?style=flat-square&logo=terraform&logoColor=white)](https://www.terraform.io/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-14-336791?style=flat-square&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![Grafana](https://img.shields.io/badge/Grafana-Monitoring-F46800?style=flat-square&logo=grafana&logoColor=white)](https://grafana.com/)
+[![CI/CD](https://img.shields.io/badge/GitHub_Actions-CI%2FCD-2088FF?style=flat-square&logo=github-actions&logoColor=white)](https://github.com/features/actions)
 
-## 📖 Project Overview
-
-This repository contains the infrastructure and code for a movie/item recommendation system. It uses the `surprise` library to train a Singular Value Decomposition (SVD) model on user ratings. 
-
-Key MLOps capabilities included:
-* **Experiment Tracking:** Logging hyperparameters, metrics, and models using **MLflow**.
-* **Containerized Deployment:** A robust **FastAPI** application to serve predictions, containerized via **Docker**.
-* **Infrastructure as Code (IaC):** AWS infrastructure definitions using **Terraform** and tested locally via **LocalStack**.
-* **Observability & Monitoring:** Custom scripts to track dataset drift and business metrics, stored in **PostgreSQL** and visualized in **Grafana**.
-* **CI/CD:** Automated testing workflows via **GitHub Actions**.
+</div>
 
 ---
 
-## 🏗️ Architecture
+## Overview
 
-The system is designed with a modern, decoupled architecture:
+This repository contains a production-grade recommendation system built on the **MovieLens 100K** dataset. It uses **Singular Value Decomposition (SVD)** — a battle-tested collaborative filtering algorithm — to predict how much a given user will enjoy a given item.
 
-1. **Model Training & Experimentation (`src/train`)**
-   * Uses `scikit-surprise` to train an SVD model.
-   * Connects to a local/dockerized MLflow tracking server to log runs, RMSE metrics, and save the artifact (`svd_model.pkl`).
-2. **Serving Layer (`src/api`)**
-   * A FastAPI service with modern lifespan event management to load the ML model into memory at startup.
-   * Exposes a `/predict` endpoint that takes a `user_id` and `item_id` and returns a predicted rating.
-3. **Data Monitoring (`monitoring`)**
-   * Computes statistical differences (drift) between a reference dataset and current traffic.
-   * Logs complex metrics (drift score, total ratings, unique users) directly to a PostgreSQL database.
-4. **Infrastructure Services (`infrastructure/docker-compose.yml`)**
-   * **PostgreSQL:** Acts as the backend store for MLflow and the repository for monitoring metrics.
-   * **MLflow Server:** Centralized UI for tracking ML experiments.
-   * **Grafana:** Connects to PostgreSQL to visualize system health and data drift over time.
-   * **LocalStack:** Simulates AWS services locally for testing serverless deployments (Lambda).
+The focus of this project is not the model itself, but **everything surrounding it**: the infrastructure, tooling, and operational practices that transform an offline ML experiment into a system that can be deployed, monitored, and maintained reliably.
+
+### Key Capabilities
+
+| Capability | Implementation |
+|---|---|
+| Data Ingestion | Automated download and preprocessing of MovieLens 100K |
+| Model Training | SVD via `scikit-surprise` with reproducible hyperparameters |
+| Experiment Tracking | MLflow — logs params, metrics, and model artifacts per run |
+| Synchronous Serving | FastAPI REST endpoint (`POST /predict`) |
+| Real-Time Streaming | AWS Kinesis → Lambda → Kinesis (via LocalStack) |
+| Infrastructure as Code | Terraform provisions all cloud resources declaratively |
+| Data Drift Monitoring | Custom script computes drift metrics and writes to PostgreSQL |
+| Observability | Grafana dashboards connected to PostgreSQL |
+| Continuous Integration | GitHub Actions — provisions infra and runs integration tests on every push |
 
 ---
 
-## 📂 Folder Structure
+## Architecture
 
-```text
-recsys-mlops-project/
-├── .github/workflows/       # CI/CD pipelines (GitHub Actions)
-├── data/                    # Dataset storage (e.g., ratings.csv)
-├── infrastructure/          # Infrastructure configurations
-│   ├── terraform/           # Terraform IaC files (main.tf)
-│   ├── local_artifacts/     # Local storage for MLflow artifacts
-│   └── docker-compose.yml   # Multi-container orchestration
-├── lambda/                  # AWS Lambda function scripts
-├── monitoring/              # Scripts for tracking drift and metrics
-│   └── monitor.py           # Custom drift and business metrics logger
-├── src/                     # Core application source code
-│   ├── api/                 # FastAPI prediction service
-│   │   └── app.py
-│   ├── data_prep/           # Data cleaning and ingestion scripts
-│   └── train/               # Model training scripts
-│       └── train.py         # SVD training with MLflow integration
-├── tests/                   # Unit and integration tests
-├── requirements.txt         # Project dependencies
-├── simulate_traffic.py      # Script to simulate API requests
-└── svd_model.pkl            # Serialized trained model (Artifact)
+The system exposes predictions through two parallel paths:
+
+```
+                        ┌──────────────────────────────────┐
+                        │         DATA LAYER               │
+                        │  MovieLens 100K → ratings.csv    │
+                        │  ~100,000 user-item interactions │
+                        └────────────────┬─────────────────┘
+                                         │
+                                         ▼
+                        ┌──────────────────────────────────┐
+                        │       TRAINING PIPELINE          │
+                        │  src/train/train.py              │
+                        │  SVD · RMSE Evaluation · MLflow  │
+                        │  Output: svd_model.pkl           │
+                        └──────────┬───────────────────────┘
+                                   │
+               ┌───────────────────┴───────────────────┐
+               ▼                                       ▼
+  ┌─────────────────────────┐          ┌───────────────────────────────┐
+  │   REST API (Sync)       │          │   Streaming Pipeline (Async)  │
+  │   src/api/app.py        │          │                               │
+  │   FastAPI + Uvicorn     │          │  simulate_traffic.py          │
+  │   POST /predict         │          │    └─► Kinesis: input-events  │
+  │   → predicted_rating    │          │              │                │
+  └─────────────────────────┘          │              ▼                │
+                                       │    lambda_function.py         │
+                                       │    (AWS Lambda via LocalStack)│
+                                       │              │                │
+                                       │              ▼                │
+                                       │    Kinesis: output-recs       │
+                                       │              │                │
+                                       │              ▼                │
+                                       │    consumer_stream.py         │
+                                       └───────────────────────────────┘
+                                                      │
+                                                      ▼
+                        ┌──────────────────────────────────────────┐
+                        │           MONITORING LAYER               │
+                        │  monitoring/monitor.py                   │
+                        │  Drift Score · Avg Rating · User Count   │
+                        │  → PostgreSQL → Grafana Dashboards       │
+                        └──────────────────────────────────────────┘
+
+           ┌──────────────────────────────────────────────────────────┐
+           │          INFRASTRUCTURE  (Docker Compose)                │
+           │  PostgreSQL :5444  │  MLflow :5001  │  Grafana :3001     │
+           │  LocalStack :4566  (AWS Cloud Emulator)                  │
+           └──────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 🛠️ Technology Stack
+## Repository Structure
 
-* **Machine Learning:** `scikit-surprise` (SVD), `pandas`
-* **Model Tracking:** MLflow
-* **API Framework:** FastAPI, Uvicorn
-* **Database:** PostgreSQL (for MLflow and Metrics)
-* **Monitoring UI:** Grafana
-* **Containerization:** Docker, Docker Compose
-* **Infrastructure as Code:** Terraform, LocalStack (AWS simulation)
-* **Testing & CI/CD:** Pytest, GitHub Actions
+```
+recsys-mlops-project/
+│
+├── .github/
+│   └── workflows/
+│       └── ci.yml                  # GitHub Actions — provisions infra + integration test
+│
+├── data/
+│   └── ratings.csv                 # Processed MovieLens 100K dataset
+│
+├── infrastructure/
+│   ├── docker-compose.yml          # PostgreSQL, MLflow, Grafana, LocalStack
+│   ├── local_artifacts/            # MLflow artifact storage (mounted as volume)
+│   └── terraform/
+│       ├── main.tf                 # Kinesis streams, Lambda function, IAM roles
+│       └── .terraform.lock.hcl    # Provider version lock
+│
+├── lambda/
+│   ├── lambda_function.py          # Serverless stream processor (event → prediction)
+│   └── lambda_function.zip         # Packaged deployment artifact
+│
+├── monitoring/
+│   └── monitor.py                  # Computes drift metrics → writes to PostgreSQL
+│
+├── src/
+│   ├── api/
+│   │   └── app.py                  # FastAPI service — loads model, serves /predict
+│   ├── data_prep/
+│   │   └── get_data.py             # Downloads and preprocesses MovieLens dataset
+│   └── train/
+│       └── train.py                # SVD training script with MLflow integration
+│
+├── tests/                          # Unit and integration tests
+├── consumer_stream.py              # Polls Kinesis output stream, prints recommendations
+├── simulate_traffic.py             # Generates random events → pushes to Kinesis input
+├── test_pipeline.py                # CI integration test — validates Kinesis connectivity
+├── test_stream.py                  # Local smoke test for the streaming pipeline
+├── svd_model.pkl                   # Serialized trained model artifact
+└── requirements.txt                # Pinned Python dependencies
+```
 
 ---
 
-## 🚀 Getting Started
+## Technology Stack
+
+**Machine Learning**
+- [`scikit-surprise`](https://surpriselib.com/) — SVD collaborative filtering
+- `pandas`, `numpy` — Data manipulation
+
+**Model Serving**
+- [`FastAPI`](https://fastapi.tiangolo.com/) + `Uvicorn` — Async REST API
+- `Pydantic` — Request/response validation
+
+**Experiment Tracking**
+- [`MLflow`](https://mlflow.org/) — Hyperparameter logging, metric tracking, artifact storage
+
+**Streaming & Serverless**
+- AWS Kinesis — Event streaming (input and output)
+- AWS Lambda — Serverless stream processor
+- [`LocalStack`](https://localstack.cloud/) — Local AWS cloud emulator
+
+**Infrastructure**
+- [`Docker`](https://www.docker.com/) + Docker Compose — Container orchestration
+- [`Terraform`](https://www.terraform.io/) — Infrastructure as Code
+
+**Data & Observability**
+- `PostgreSQL` — MLflow backend store + monitoring metrics storage
+- [`Grafana`](https://grafana.com/) — Monitoring dashboards
+
+**CI/CD**
+- GitHub Actions — Automated testing on every push to `main`
+
+---
+
+## Getting Started
 
 ### Prerequisites
-* Python 3.10+
-* Docker & Docker Compose
-* (Optional) Terraform
 
-### 1. Local Environment Setup
-Clone the repository and install dependencies:
+- Python 3.10+
+- Docker Engine + Docker Compose
+- Terraform CLI
+
+### Step 1 — Clone and Install Dependencies
+
 ```bash
 git clone <your-repo-url>
 cd recsys-mlops-project
 python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 2. Start the Infrastructure Services
-Launch MLflow, PostgreSQL, Grafana, and LocalStack using Docker Compose:
+### Step 2 — Fetch the Dataset
+
+```bash
+python src/data_prep/get_data.py
+```
+
+This downloads MovieLens 100K, converts it to CSV, and saves it to `data/ratings.csv`.
+
+### Step 3 — Start Infrastructure Services
+
 ```bash
 cd infrastructure
 docker-compose up -d
 ```
-* **MLflow UI:** `http://localhost:5001`
-* **Grafana UI:** `http://localhost:3001`
 
-### 3. Train the Model
-Navigate to the root directory and run the training script. This will log metrics and save the model to MLflow.
+| Service | URL |
+|---|---|
+| MLflow UI | http://localhost:5001 |
+| Grafana | http://localhost:3001 |
+| LocalStack (AWS) | http://localhost:4566 |
+| PostgreSQL | localhost:5444 |
+
+Wait ~15 seconds for all services to initialize before proceeding.
+
+### Step 4 — Provision Cloud Resources (LocalStack)
+
 ```bash
+cd infrastructure/terraform
+terraform init
+terraform apply -auto-approve
+```
+
+This creates the two Kinesis streams, the Lambda function, and the required IAM roles — all locally via LocalStack.
+
+### Step 5 — Train the Model
+
+```bash
+# From the project root
 python src/train/train.py
 ```
-*Check the MLflow UI to see the logged metrics, parameters, and saved artifacts.*
 
-### 4. Run the API Server
-Start the FastAPI server locally:
+View the logged run at **http://localhost:5001** — parameters, RMSE metric, and the saved artifact are all tracked.
+
+### Step 6 — Start the REST API
+
 ```bash
 uvicorn src.api.app:app --host 0.0.0.0 --port 8000 --reload
 ```
-* **Interactive API Docs:** `http://localhost:8000/docs`
 
----
+Interactive API documentation is available at **http://localhost:8000/docs**.
 
-## 📡 API Usage
+### Step 7 — Run the Streaming Pipeline
 
-**Endpoint:** `POST /predict`
+Open three separate terminals:
 
-**Request Body:**
-```json
-{
-  "user_id": 1,
-  "item_id": 105
-}
-```
-
-**Example cURL:**
 ```bash
-curl -X 'POST' \
-  'http://localhost:8000/predict' \
-  -H 'accept: application/json' \
-  -H 'Content-Type: application/json' \
-  -d '{
-  "user_id": 1,
-  "item_id": 105
-}'
-```
+# Terminal 1 — Simulate incoming user events
+python simulate_traffic.py
 
-**Response:**
-```json
-{
-  "user_id": 1,
-  "item_id": 105,
-  "predicted_rating": 3.75
-}
-```
+# Terminal 2 — Consume outgoing recommendations
+python consumer_stream.py
 
----
-
-## 📊 Monitoring & Observability
-
-To simulate the passage of time and incoming data, run the monitoring script:
-```bash
+# Terminal 3 — Run monitoring and log metrics
 python monitoring/monitor.py
 ```
-This script reads subsets of your data, compares reference data against current data, and logs:
-* Dataset Drift Score
-* Average current ratings
-* Unique user counts
-
-These metrics are saved directly into the PostgreSQL database (`evidently_metrics` table) and can be visualized by setting up a dashboard in the local Grafana instance.
 
 ---
 
-## 🧪 Testing
+## API Reference
 
-To run the unit and integration tests:
-```bash
-pytest tests/
+### `POST /predict`
+
+Predicts the rating a user would give to a specific item.
+
+**Request**
+
+```json
+{
+  "user_id": 42,
+  "item_id": 101
+}
 ```
-Continuous Integration is configured via `.github/workflows/ci.yml` to automatically run these tests on code pushes.
+
+**Response**
+
+```json
+{
+  "user_id": 42,
+  "item_id": 101,
+  "predicted_rating": 3.84
+}
+```
+
+**cURL Example**
+
+```bash
+curl -X POST "http://localhost:8000/predict" \
+  -H "Content-Type: application/json" \
+  -d '{"user_id": 42, "item_id": 101}'
+```
+
+**Error Responses**
+
+| Status | Condition |
+|---|---|
+| `200 OK` | Prediction returned successfully |
+| `503 Service Unavailable` | Model file not found at startup |
+
+---
+
+## Monitoring
+
+The monitoring script computes data drift by comparing two windows of the dataset:
+
+| Window | Rows | Purpose |
+|---|---|---|
+| Reference (baseline) | First 50,000 rows | Represents training-time distribution |
+| Current (production) | Rows 50,000–60,000 | Represents live traffic |
+
+**Metrics written to PostgreSQL (`evidently_metrics` table):**
+
+| Metric | Description |
+|---|---|
+| `dataset_drift` | Boolean — `True` if drift score exceeds threshold |
+| `share_of_drifted_columns` | Numeric magnitude of the drift |
+| `avg_current_rating` | Mean rating in the current window |
+| `total_ratings` | Total events in the current window |
+| `unique_users` | Distinct users seen in the current window |
+
+Connect Grafana to the PostgreSQL data source to visualize trends over time. Default credentials: `admin` / `admin`.
+
+---
+
+## CI/CD
+
+The GitHub Actions pipeline runs on every push or pull request to `main`:
+
+1. Starts LocalStack in Docker
+2. Initializes and applies Terraform configuration
+3. Runs `test_pipeline.py` — sends a test event to the Kinesis stream and asserts a successful response
+
+This guarantees that the infrastructure configuration and streaming pipeline remain functional on every commit.
+
+```bash
+# Run tests locally
+pytest tests/
+python test_pipeline.py
+```
+
+---
+
+## License
+
+This project is open-source and available under the [MIT License](LICENSE).
