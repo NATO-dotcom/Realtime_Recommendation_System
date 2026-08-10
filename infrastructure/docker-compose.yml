@@ -1,0 +1,36 @@
+services:
+  db:
+    image: postgres:14
+    environment:
+      POSTGRES_USER: mlflow_user
+      POSTGRES_PASSWORD: mlflow_password
+      POSTGRES_DB: mlflow_db
+    ports:
+      - "5444:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  mlflow:
+    image: python:3.10-slim
+    ports:
+      - "5000"  # Docker will dynamically assign a random free port for MLflow too!
+    command: >
+      bash -c "pip install mlflow psycopg2-binary &&
+      mlflow server
+      --backend-store-uri postgresql://mlflow_user:mlflow_password@db:5432/mlflow_db
+      --default-artifact-root /mlflow_artifacts
+      --host 0.0.0.0"
+    volumes:
+      - ./local_artifacts:/mlflow_artifacts
+    depends_on:
+      - db
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000"  # Docker dynamically assigns a random free port
+    depends_on:
+      - db
+
+volumes:
+  postgres_data:
