@@ -18,13 +18,10 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Start LocalStack
-        uses: localstack/setup-localstack@v0.2.2
-        with:
-          image-tag: '3.7.2'
-          use-pro: 'false'
-        env:
-          LOCALSTACK_ACKNOWLEDGE_ACCOUNT_REQUIREMENT: "1"
+      - name: Start LocalStack via Docker
+        run: |
+          docker run -d -e DEFAULT_REGION=us-east-1 -p 4566:4566 localstack/localstack:3.7.2
+          sleep 15
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
