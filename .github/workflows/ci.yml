@@ -21,7 +21,7 @@ jobs:
       - name: Start LocalStack
         uses: localstack/setup-localstack@v0.2.2
         with:
-          image-tag: 'latest'
+          image-tag: '3.7.2'
         env:
           LOCALSTACK_ACKNOWLEDGE_ACCOUNT_REQUIREMENT: "1"
 
